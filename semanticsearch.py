@@ -8,13 +8,21 @@ r = redis.Redis(host="localhost", port=6739)
 embeddings = generate_embeddings(sampletext).tolist()
 
 vec = np.array(embeddings, dtype=np.float32).tobytes()
-q = Query('*=>[KNN 3 @vector $query_vec AS vector_score]')\
+# q = Query('*=>[KNN 3 @vector $query_vec AS vector_score]')\
+#     .sort_by('vector_score')\
+#     .return_fields('vector_score', 'content')\
+#     .dialect(2)    
+# params = {"query_vec": vec}
+
+q = Query('(@genre:Comedy)=>[KNN 3 @vector $query_vec AS vector_score]')\
     .sort_by('vector_score')\
     .return_fields('vector_score', 'content')\
     .dialect(2)    
-params = {"query_vec": vec}
+params = {"query_vec": vec, "genre": "Comedy"}
 
-results = r.ft('idx').search(q, query_params=params)
+
+
+results = r.ft('idxadv').search(q, query_params=params)
 
 for doc in results.docs:
     print(f"distance:{round(float(doc['vector_score']),3)} key: {doc['id']}\n")

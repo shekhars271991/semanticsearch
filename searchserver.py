@@ -17,15 +17,25 @@ def search():
 
         embeddings = generate_embeddings(sampletext).tolist()
         vec = np.array(embeddings, dtype=np.float32).tobytes()
-        
-        q = Query('*=>[KNN 3 @vector $query_vec AS vector_score]')\
-            .sort_by('vector_score')\
-            .return_fields('vector_score', 'content')\
-            .dialect(2)
-        
+
+        # Check if 'genre' is provided in the query parameters
+        genre = request.args.get('genre')
+        if genre:
+            # If genre is provided, construct the query with genre filter
+            q = Query(f'(@genre:{genre})=>[KNN 3 @vector $query_vec AS vector_score]')\
+                .sort_by('vector_score')\
+                .return_fields('vector_score', 'content')\
+                .dialect(2)
+        else:
+            # If genre is not provided, construct the query without genre filter
+            q = Query('*=>[KNN 3 @vector $query_vec AS vector_score]')\
+                .sort_by('vector_score')\
+                .return_fields('vector_score', 'content')\
+                .dialect(2)
+
         params = {"query_vec": vec}
 
-        results = r.ft('idx').search(q, query_params=params)
+        results = r.ft('idxadv').search(q, query_params=params)
         response = [{'distance': round(float(doc['vector_score']), 3), 'key': doc['id']} for doc in results.docs]
         return jsonify(response), 200
     except Exception as e:
