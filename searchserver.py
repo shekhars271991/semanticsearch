@@ -24,19 +24,19 @@ def search():
             # If genre is provided, construct the query with genre filter
             q = Query(f'(@genre:{genre})=>[KNN 3 @vector $query_vec AS vector_score]')\
                 .sort_by('vector_score')\
-                .return_fields('vector_score', 'content')\
-                .dialect(2)
+                .return_fields('vector_score', 'name','genre')\
+                .dialect(3)
         else:
             # If genre is not provided, construct the query without genre filter
             q = Query('*=>[KNN 3 @vector $query_vec AS vector_score]')\
                 .sort_by('vector_score')\
-                .return_fields('vector_score', 'content')\
-                .dialect(2)
+                .return_fields('vector_score', 'name','genre')\
+                .dialect(3)
 
         params = {"query_vec": vec}
 
         results = r.ft('idxadv').search(q, query_params=params)
-        response = [{'distance': round(float(doc['vector_score']), 3), 'key': doc['id']} for doc in results.docs]
+        response = [{'key': doc['id'],'distance': round(float(doc['vector_score']), 3), 'name': doc['name'],'genre': doc['genre']} for doc in results.docs]
         return jsonify(response), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
