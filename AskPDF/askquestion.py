@@ -6,7 +6,6 @@ from openai import OpenAI
 from secrets import OPENAI_API_KEY 
 
 
-OPENAI_API_KEY = "sk-proj-GmFiX5wa9Ym49IW33ht0T3BlbkFJQ6u5or7AXnvTvhAc8Isc"
 def search_similar_chunks(query, top_k=5, redis_host='localhost', redis_port=6379):
     redis_client = redis.Redis(host=redis_host, port=redis_port, db=0)
     model = SentenceTransformer('all-MiniLM-L6-v2')
