@@ -2,10 +2,9 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 import redis
 from redis.commands.search.query import Query
-from langchain_openai.chat_models import ChatOpenAI
-from langchain_core.output_parsers import StrOutputParser
-from langchain.prompts import ChatPromptTemplate
 from openai import OpenAI
+from secrets import OPENAI_API_KEY 
+
 
 OPENAI_API_KEY = "sk-proj-GmFiX5wa9Ym49IW33ht0T3BlbkFJQ6u5or7AXnvTvhAc8Isc"
 def search_similar_chunks(query, top_k=5, redis_host='localhost', redis_port=6379):
@@ -29,9 +28,6 @@ def search_similar_chunks(query, top_k=5, redis_host='localhost', redis_port=637
     context = "\n\n".join(matching_chunks)
     return context
     # return matching_chunks
-
-
-
 
 def ask_openai(context, question):
     # Define parameters for the completion call
