@@ -12,7 +12,7 @@ UPLOAD_LIMIT = 100000
 
 try:
     # Connect to Redis
-    redis_client = Redis(host='localhost', port=6739, db=0)
+    redis_client = Redis(host='localhost', port=6379, db=0)
 
     # Load JSON data from file
     with open('data/tvs.json', 'r') as file:

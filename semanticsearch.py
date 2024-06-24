@@ -3,7 +3,7 @@ import numpy as np
 import redis
 from embeddings import generate_embeddings
 sampletext = "a travel story going to differnt locations"
-r = redis.Redis(host="localhost", port=6739)
+r = redis.Redis(host="localhost", port=6379)
 
 embeddings = generate_embeddings(sampletext).tolist()
 

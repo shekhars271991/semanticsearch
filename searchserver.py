@@ -5,7 +5,7 @@ import redis
 from embeddings import generate_embeddings
 
 app = Flask(__name__)
-r = redis.Redis(host="localhost", port=6739)
+r = redis.Redis(host="localhost", port=6379)
 
 @app.route('/search', methods=['POST'])
 def search():
