@@ -1,2 +1,3 @@
 /data/
-/AskPDF/secrets.py
+/AskPDF/my_secrets.py
+/AskPDF/venv

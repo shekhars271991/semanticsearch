@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Streamlit: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/AskPDF/venv/bin/streamlit",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONUNBUFFERED": "1",
+                "STREAMLIT_RUN_APP": "true"
+            },
+            "args": [
+                "run",
+                "${workspaceFolder}/AskPDF/app.py"
+            ],
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
