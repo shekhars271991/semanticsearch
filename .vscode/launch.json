@@ -13,7 +13,7 @@
             },
             "args": [
                 "run",
-                "${workspaceFolder}/AskPDF/app.py"
+                "${workspaceFolder}/AskPDF/enhancedapp.py"
             ],
             "cwd": "${workspaceFolder}",
             "envFile": "${workspaceFolder}/.env"
