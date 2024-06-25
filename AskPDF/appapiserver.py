@@ -13,6 +13,8 @@ from redis.commands.search.field import TextField, VectorField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 import uuid
 from datetime import datetime
+import json
+
 
 
 
@@ -102,6 +104,14 @@ def get_embeddings(chunks):
     embeddings = model.encode(chunks)
     return embeddings
 
+def get_unique_filename(filename):
+    original_filename = filename
+    filename_prefix = original_filename[:3] if len(original_filename) >= 3 else original_filename
+    filename, file_extension = os.path.splitext(original_filename)
+    unique_filename = f"{filename_prefix}_{str(uuid.uuid4())[:8]}{file_extension}"
+    return unique_filename
+    
+
 def store_in_redis(doc_name, chunks, embeddings):
     for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
         key = f"{doc_name}_chunk_{i}"
@@ -122,10 +132,11 @@ def upload_file():
 
     if file:
         # Generate a unique filename
-        original_filename = file.filename
-        filename_prefix = original_filename[:3] if len(original_filename) >= 3 else original_filename
-        filename, file_extension = os.path.splitext(original_filename)
-        unique_filename = f"{filename_prefix}_{str(uuid.uuid4())[:8]}{file_extension}"
+        unique_filename = get_unique_filename(file.filename)
+        # original_filename = file.filename
+        # filename_prefix = original_filename[:3] if len(original_filename) >= 3 else original_filename
+        # filename, file_extension = os.path.splitext(original_filename)
+        # unique_filename = f"{filename_prefix}_{str(uuid.uuid4())[:8]}{file_extension}"
 
         file_path = os.path.join(UPLOAD_DIRECTORY, unique_filename)
         file.save(file_path)
@@ -138,13 +149,73 @@ def upload_file():
             text = extract_text_from_pdf(file_path)
             chunks = chunk_text(text)
             embeddings = get_embeddings(chunks)
-            store_file_metadata(doc_name, original_filename, upload_time)
+            store_file_metadata(doc_name, file.filename, upload_time)
 
             store_in_redis(doc_name, chunks, embeddings)
             
             return jsonify({'message': 'Document processed and embeddings stored in Redis'}), 200
         except Exception as e:
             return jsonify({'error': f'Failed to process document: {str(e)}'}), 500
+
+
+#list all uploaded documents
+        
+# Function to list all uploaded documents with metadata
+def list_uploaded_documents():
+    document_keys = redis_client.keys('file_*')
+    documents = []
+    for key in document_keys:
+        if key.decode('utf-8').endswith('_metadata'):
+            doc_name = key.decode('utf-8').split('_metadata')[0].split('file_')[1]
+            metadata = redis_client.json().get(key)
+            documents.append({
+                "doc_name": doc_name,
+                "metadata": metadata
+            })
+    return documents
+
+
+@app.route('/documents', methods=['GET'])
+def get_uploaded_documents():
+    documents = list_uploaded_documents()
+    return jsonify({'documents': documents})
+
+
+
+
+
+
+#delete documents
+
+@app.route('/delete', methods=['DELETE'])
+def delete_document():
+    data = request.get_json()
+    doc_name = data.get('doc_name')
+
+    if not doc_name:
+        return jsonify({'error': 'Missing document name'}), 400
+
+    try:
+        # Delete file from filesystem
+        file_path = os.path.join(UPLOAD_DIRECTORY, f"{doc_name}.pdf")
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        else:
+            return jsonify({'error': 'File not found in filesystem'}), 404
+
+        # Delete metadata from Redis
+        metadata_key = f"file_{doc_name}_metadata"
+        redis_client.delete(metadata_key)
+
+        # Delete chunks from Redis
+        chunk_keys = redis_client.keys(f"{doc_name}_chunk_*")
+        for key in chunk_keys:
+            redis_client.delete(key)
+
+        return jsonify({'message': f'Document {doc_name} deleted successfully'}), 200
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to delete document: {str(e)}'}), 500
 
 
 
