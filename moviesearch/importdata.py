@@ -7,7 +7,7 @@ try:
     redis_client = Redis(host='localhost', port=6379, db=0)
 
     # Load JSON data from file
-    with open('data/tvs.json', 'r') as file:
+    with open('../data/tvs.json', 'r') as file:
         json_data = json.load(file)
 
     # Iterate over each JSON object

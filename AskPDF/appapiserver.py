@@ -2,6 +2,7 @@
 
 from flask import Flask, request, jsonify
 import numpy as np
+from flask_cors import CORS
 from sentence_transformers import SentenceTransformer
 import redis
 from redis.commands.search.query import Query
@@ -19,19 +20,28 @@ import json
 
 
 app = Flask(__name__)
+CORS(app)
 model = SentenceTransformer('all-MiniLM-L6-v2')
 UPLOAD_DIRECTORY = './AskPDF/uploadedFiles'
 redis_client = redis.Redis(host="localhost", port=6379, db=0)
 INDEX_NAME = "idxpdf"
 
-def search_similar_chunks(query):
+def search_similar_chunks(query,role):
    
     query_embedding = model.encode(query)
     vector = np.array(query_embedding, dtype=np.float32).tobytes()
-    q = Query('*=>[KNN 3 @vector $query_vec AS vector_score]')\
-    .sort_by('vector_score')\
-    .return_fields('vector_score', 'chunk')\
-    .dialect(2)    
+
+    q = Query(f'(@roles:{role} | public)=>[KNN 3 @vector $query_vec AS vector_score]')\
+                .sort_by('vector_score')\
+                .return_fields('vector_score', 'chunk')\
+                .dialect(3)
+
+
+    # q = Query('*=>[KNN 3 @vector $query_vec AS vector_score]')\
+    # .sort_by('vector_score')\
+    # .return_fields('vector_score', 'chunk')\
+    # .dialect(2)    
+    
     params = {"query_vec": vector}
 
     results = redis_client.ft(INDEX_NAME).search(q, query_params=params)
@@ -68,8 +78,9 @@ def ask_openai(context, question):
 def ask_question():
     data = request.get_json()
     query = data['query']
+    role = data['role']
 
-    context = search_similar_chunks(query)
+    context = search_similar_chunks(query, role)
     answer = ask_openai(context, query)
 
     return jsonify({'answer': answer})
@@ -78,11 +89,12 @@ def ask_question():
 # the following code is for uploading a PDF
 
 # Function to store file metadata in Redis
-def store_file_metadata(doc_name, original_filename, upload_time):
+def store_file_metadata(doc_name, original_filename, upload_time,roles):
     metadata_key = f"file_{doc_name}_metadata"
     metadata = {
         "uploaded_time": upload_time,
-        "original_filename": original_filename
+        "original_filename": original_filename,
+        "roles": roles
     }
     redis_client.json().set(metadata_key, '.', metadata)
 
@@ -112,17 +124,20 @@ def get_unique_filename(filename):
     return unique_filename
     
 
-def store_in_redis(doc_name, chunks, embeddings):
+def store_in_redis(doc_name, chunks, embeddings, roles):
     for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
-        key = f"{doc_name}_chunk_{i}"
+        key = f"chunk_{doc_name}_{i}"
         value = {
             "chunk": chunk,
-            "embedding": embedding.tolist()  # Convert to list for JSON serialization
+            "embedding": embedding.tolist(),  # Convert to list for JSON serialization
+            "roles": roles
         }
         redis_client.json().set(key, '.', value)
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
+    roles_string = request.form.get('roles')
+    roles = roles_string.split(',')
     if 'file' not in request.files:
         return jsonify({'error': 'No file part in the request'}), 400
 
@@ -149,9 +164,9 @@ def upload_file():
             text = extract_text_from_pdf(file_path)
             chunks = chunk_text(text)
             embeddings = get_embeddings(chunks)
-            store_file_metadata(doc_name, file.filename, upload_time)
+            store_file_metadata(doc_name, file.filename, upload_time,roles)
 
-            store_in_redis(doc_name, chunks, embeddings)
+            store_in_redis(doc_name, chunks, embeddings, roles)
             
             return jsonify({'message': 'Document processed and embeddings stored in Redis'}), 200
         except Exception as e:
@@ -208,7 +223,7 @@ def delete_document():
         redis_client.delete(metadata_key)
 
         # Delete chunks from Redis
-        chunk_keys = redis_client.keys(f"{doc_name}_chunk_*")
+        chunk_keys = redis_client.keys(f"chunk_{doc_name}_*")
         for key in chunk_keys:
             redis_client.delete(key)
 
@@ -223,6 +238,7 @@ def create_vector_index():
     # Define the schema
     schema = [
         TextField("$.chunk", as_name='chunk'),
+        TextField("$.roles", as_name='roles'),
         VectorField('$.embedding', "HNSW", {
             "TYPE": 'FLOAT32',
             "DIM": 384,
@@ -242,4 +258,4 @@ def create_vector_index():
 
 if __name__ == '__main__':
     create_vector_index()
-    app.run(debug=True)
+    app.run(debug=True, use_reloader=False)

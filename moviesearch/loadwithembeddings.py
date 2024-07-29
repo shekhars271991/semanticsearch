@@ -8,14 +8,14 @@ from sentence_transformers import SentenceTransformer
 from embeddings import generate_embeddings
 skip=0
 uploaded=0
-UPLOAD_LIMIT = 100000
+UPLOAD_LIMIT = 1000
 
 try:
     # Connect to Redis
     redis_client = Redis(host='localhost', port=6379, db=0)
 
     # Load JSON data from file
-    with open('data/tvs.json', 'r') as file:
+    with open('/Users/shekharsuman/sampleredisvss/data/tvs.json', 'r') as file:
         json_data = json.load(file)
 
     # Iterate over each JSON object

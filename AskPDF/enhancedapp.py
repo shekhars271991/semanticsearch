@@ -9,8 +9,9 @@ from openai import OpenAI
 from redis.commands.search.query import Query
 import numpy as np
 from my_secrets import OPENAI_API_KEY 
+from createvectoridx import create_redis_index
 
-
+create_redis_index()
 def extract_text_from_pdf(pdf_path):
     doc = fitz.open(pdf_path)
     text = ""
